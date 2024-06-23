@@ -1,14 +1,39 @@
 import gleam/float
 import gleam/int
 import gleam/io
-import gleam/iterator
-import gleam/result
 import gleam/string
 
 pub type Currency {
   Dollar
   Euro
   Won
+}
+
+fn get_exchange_rate(from: Currency, to: Currency) -> Float {
+  // hard coded
+  case from {
+    Dollar -> {
+      case to {
+        Dollar -> 1.0
+        Euro -> 0.94
+        Won -> 1391.0
+      }
+    }
+    Euro -> {
+      case to {
+        Dollar -> 1.07
+        Euro -> 1.0
+        Won -> 1487.47
+      }
+    }
+    Won -> {
+      case to {
+        Dollar -> 0.00072
+        Euro -> 0.00067
+        Won -> 1.0
+      }
+    }
+  }
 }
 
 fn currency_to_string(cur: Currency) -> String {
@@ -22,37 +47,19 @@ fn currency_to_string(cur: Currency) -> String {
 pub type TranslationSource =
   #(Currency, Float)
 
-pub type RawAmount =
-  String
-
 fn calculate(src: TranslationSource, trgt_currency: Currency) -> Float {
-  // hard coded
   let #(src_currency, src_amount) = src
-  case src_currency {
-    Dollar ->
-      case trgt_currency {
-        Dollar -> src_amount
-        Euro -> src_amount *. 0.94
-        Won -> src_amount *. 1390.0
-      }
-    Euro ->
-      case trgt_currency {
-        Dollar -> src_amount *. 1.07
-        Euro -> src_amount
-        Won -> src_amount *. 1487.5
-      }
-    Won ->
-      case trgt_currency {
-        Dollar -> src_amount *. 0.00072
-        Euro -> src_amount *. 0.00067
-        Won -> src_amount
-      }
-  }
+  get_exchange_rate(src_currency, trgt_currency) *. src_amount
 }
 
 fn translate(input: String) -> TranslationSource {
-  case input |> string.replace(",", "") |> string.replace(" ", "") {
-    "$" <> amount -> {
+  case
+    input
+    |> string.lowercase
+    |> string.replace(",", "")
+    |> string.replace(" ", "")
+  {
+    "dollar" <> amount | "$" <> amount -> {
       case float.parse(amount) {
         Error(_e) ->
           case int.parse(amount) {
@@ -62,7 +69,7 @@ fn translate(input: String) -> TranslationSource {
         Ok(n) -> #(Dollar, n)
       }
     }
-    "₩" <> amount -> {
+    "won" <> amount | "₩" <> amount -> {
       case float.parse(amount) {
         Error(_e) ->
           case int.parse(amount) {
@@ -82,13 +89,13 @@ fn translate(input: String) -> TranslationSource {
         Ok(n) -> #(Euro, n)
       }
     }
-    _ -> #(Euro, 1.0)
+    _ -> panic
   }
 }
 
 pub fn main() {
   let input = "€ 1800.0"
-  let target = Dollar
+  let target = Won
   let res =
     translate(input)
     |> calculate(target)
